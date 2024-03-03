@@ -247,6 +247,12 @@ def parse_args():
         help="Use the openai pretrained models.",
     )
     # arguments for distributed training
+    # Haomiao Tang mod begin
+    parser.add_argument(
+        "--distributed",
+        default=False
+    )
+    # Haomiao Tang mod end
     parser.add_argument(
         "--dist-url",
         default="tcp://127.0.0.1:6100",
