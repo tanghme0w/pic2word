@@ -6,10 +6,12 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize, RandomResizedCrop
 from tqdm import tqdm
 
+
 from eval_utils import get_metrics_fashion
 from params import parse_args
 from src.data import FashionIQ
 from src.eval_utils import evaluate_fashion
+from blip_diff_pipeline import BlipDiffusionPipeline
 
 
 def preprocess(n_px: int, is_train: bool):
@@ -32,7 +34,9 @@ def preprocess(n_px: int, is_train: bool):
 
 
 def load_model(args):
-    model = None
+    model = BlipDiffusionPipeline.from_pretrained(
+        "Salesforce/blipdiffusion", torch_dtype=torch.float16
+    ).to("cuda")
     return preprocess(224, False), model
 
 
@@ -65,26 +69,16 @@ def fashion_eval(args, root_project):
 
 
 def evaluate_fashion(model, args, source_loader, target_loader):
-    # temp
-    from src.eval_retrieval import load_model
-    model, img2text, _ = load_model(args)
-
-    model.eval()
     all_composed_feat = []
     all_image_features = []
     all_target_paths = []
     all_answer_paths = []
-
     # get all image features
     with torch.no_grad():
         for batch in tqdm(target_loader, desc="Target Features:"):
             target_images, target_paths = batch
             target_images = target_images.cuda(0, non_blocking=True)
-            # image_features = model.encode_image(target_images)  # TODO inference alignment
-
-            # temp
-            image_features = model.encode_image(target_images)
-
+            image_features = model.encode_image(target_images)  # TODO inference alignment
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
             all_image_features.append(image_features)
             for path in target_paths:
@@ -95,18 +89,7 @@ def evaluate_fashion(model, args, source_loader, target_loader):
             ref_images, target_images, target_caption, caption_only, answer_paths, ref_names, captions = batch
             for path in answer_paths:
                 all_answer_paths.append(path)
-            # composed_feat = model.forward()  # Tensor: [bs, 768] TODO inference alignment
-
-            # temp
-            ref_images = ref_images.cuda(0, non_blocking=True)
-            target_caption = target_caption.cuda(0, non_blocking=True)
-            query_image_features = model.encode_image(ref_images)
-            query_image_tokens = img2text(query_image_features)
-            from third_party.open_clip.clip import tokenize
-            id_split = tokenize(["*"])[0][1]
-
-            composed_feat = model.encode_text_img_retrieval(target_caption, query_image_tokens, split_ind=id_split, repeat=False)
-
+            composed_feat = model.forward()  # Tensor: [bs, 768] TODO inference alignment
             composed_feat = composed_feat / composed_feat.norm(dim=-1, keepdim=True)
             all_composed_feat.append(composed_feat)
     metric_func = partial(get_metrics_fashion,

@@ -11,7 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+# # Haomiao Tang mod begin
+# import sys
+# sys.path.append('~/Desktop/CIR/pic2word')
+# # Haomiao Tang mod end
 import os
 import time
 import logging
@@ -44,10 +47,10 @@ def load_model(args):
     model, _, preprocess_val = load(
             args.model,
             jit=False)
-    img2text = IM2TEXT(embed_dim=model.embed_dim, 
-                       middle_dim=args.middle_dim, 
+    img2text = IM2TEXT(embed_dim=model.embed_dim,
+                       middle_dim=args.middle_dim,
                        output_dim=model.token_embedding.weight.shape[1],
-                       n_layer=args.n_layer) 
+                       n_layer=args.n_layer)
     # See https://discuss.pytorch.org/t/valueerror-attemting-to-unscale-fp16-gradients/81372
     if args.precision == "amp" or args.precision == "fp32" or args.gpu is None:
         convert_models_to_fp32(model)
@@ -68,10 +71,10 @@ def load_model(args):
         if args.distributed and args.use_bn_sync:
             model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         if args.distributed:
-            model = torch.nn.parallel.DistributedDataParallel(model, 
-                device_ids=[args.gpu], 
+            model = torch.nn.parallel.DistributedDataParallel(model,
+                device_ids=[args.gpu],
                 find_unused_parameters=model.has_extra)
-            img2text = torch.nn.parallel.DistributedDataParallel(img2text, 
+            img2text = torch.nn.parallel.DistributedDataParallel(img2text,
                 device_ids=[args.gpu], find_unused_parameters=False)
         if args.dp:
             model = torch.nn.DataParallel(model, device_ids=args.multigpu)
@@ -121,7 +124,7 @@ def setup_log_save(args):
                 val = getattr(args, name)
                 logging.info(f"{name}: {val}")
                 f.write(f"{name}: {val}\n")
-            
+
     if args.distributed:
         dist.init_process_group(
             backend=args.dist_backend,
@@ -145,7 +148,7 @@ def main_worker(gpu, ngpus_per_node, log_queue, args):
     # Load trained model
     model, img2text, preprocess_val = load_model(args)
     cudnn.benchmark = True
-    cudnn.deterministic = False   
+    cudnn.deterministic = False
     root_project = os.path.join(get_project_root(), 'data')
     ## Padding option
     if args.target_pad:
@@ -160,8 +163,8 @@ def main_worker(gpu, ngpus_per_node, log_queue, args):
         n_px = trans_val[1].size
         trans_val = [T.Resize(n_px, interpolation=Image.BICUBIC)] + trans_val[2:]
         preprocess_val_region = T.Compose(trans_val)
-        source_dataset = CsvCOCO(transforms=preprocess_val, 
-                                 transforms_region=preprocess_val_region, 
+        source_dataset = CsvCOCO(transforms=preprocess_val,
+                                 transforms_region=preprocess_val_region,
                                  root=root_project)
         source_dataloader = DataLoader(
         source_dataset,
@@ -173,10 +176,10 @@ def main_worker(gpu, ngpus_per_node, log_queue, args):
         evaluate_coco(model, img2text, args, source_dataloader)
 
     elif args.eval_mode == 'cirr':
-        source_dataset = CIRR(transforms=preprocess_val, 
+        source_dataset = CIRR(transforms=preprocess_val,
                               root=root_project)
-        target_dataset = CIRR(transforms=preprocess_val, 
-                              root=root_project, 
+        target_dataset = CIRR(transforms=preprocess_val,
+                              root=root_project,
                               mode='imgs')
         source_dataloader = DataLoader(
             source_dataset,
@@ -192,18 +195,18 @@ def main_worker(gpu, ngpus_per_node, log_queue, args):
             num_workers=args.workers,
             pin_memory=True,
             drop_last=False)
-        evaluate_cirr(model, 
-                      img2text, 
-                      args, 
-                      source_dataloader, 
+        evaluate_cirr(model,
+                      img2text,
+                      args,
+                      source_dataloader,
                       target_dataloader)
 
     elif args.eval_mode == 'cirr_test':
-        source_dataset = CIRR(transforms=preprocess_val, 
+        source_dataset = CIRR(transforms=preprocess_val,
                               root=root_project, test=True)
-        target_dataset = CIRR(transforms=preprocess_val, 
-                              root=root_project, 
-                              mode='imgs', 
+        target_dataset = CIRR(transforms=preprocess_val,
+                              root=root_project,
+                              mode='imgs',
                               test=True)
         source_dataloader = DataLoader(
             source_dataset,
@@ -219,24 +222,24 @@ def main_worker(gpu, ngpus_per_node, log_queue, args):
             num_workers=args.workers,
             pin_memory=True,
             drop_last=False)
-        results = evaluate_cirr_test(model, 
-                                     img2text, 
-                                     args, 
-                                     source_dataloader, 
+        results = evaluate_cirr_test(model,
+                                     img2text,
+                                     args,
+                                     source_dataloader,
                                      target_dataloader)
         for key, value in results.items():
             with open('res_cirr/' + key + '.json', 'w') as f:
                 json.dump(value, f)
-    
+
     elif args.eval_mode == 'fashion':
         assert args.source_data in ['dress', 'shirt', 'toptee']
-        source_dataset = FashionIQ(cloth=args.source_data, 
-                                   transforms=preprocess_val, 
-                                   root=root_project, 
+        source_dataset = FashionIQ(cloth=args.source_data,
+                                   transforms=preprocess_val,
+                                   root=root_project,
                                    is_return_target_path=True)
-        target_dataset = FashionIQ(cloth=args.source_data, 
-                                   transforms=preprocess_val, 
-                                   root=root_project, 
+        target_dataset = FashionIQ(cloth=args.source_data,
+                                   transforms=preprocess_val,
+                                   root=root_project,
                                    mode='imgs')
         source_dataloader = DataLoader(
             source_dataset,
@@ -282,11 +285,7 @@ def main():
 
     # get the name of the experiments
     if args.name is None:
-        args.name = (f"lr={args.lr}_"
-            "wd={args.wd}_"
-            "agg={args.aggregate}_"
-            "model={args.model}_"
-            "batchsize={args.batch_size}_workers={args.workers}")
+        args.name = f"lr={args.lr}_wd={args.wd}_agg={args.aggregate}_model={args.model}_batchsize={args.batch_size}_workers={args.workers}"
         if args.time_suffix:
             args.name += "_date=%Y-%m-%d-%H-%M-%S"
             args.name = strftime(args.name, gmtime())
@@ -336,7 +335,7 @@ def main():
     for dirname in [args.tensorboard_path, args.checkpoint_path]:
         if dirname:
             os.makedirs(dirname, exist_ok=True)
-    
+
 
     # Set multiprocessing type to spawn.
     # This is important for logging to work with multiprocessing.
@@ -346,10 +345,7 @@ def main():
     args.log_level = logging.DEBUG if args.debug else logging.INFO
     log_queue = setup_primary_logging(args.log_path, args.log_level)
     args.world_size = 1
-    try:
-        main_worker(args.gpu, None, log_queue, args)
-    except:
-        print('evaluation done')
+    main_worker(args.gpu, None, log_queue, args)
 
 
 if __name__ == "__main__":
