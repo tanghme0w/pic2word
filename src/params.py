@@ -32,6 +32,15 @@ def get_default_params(model_name):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    # Haomiao Tang mod begin
+    parser.add_argument(
+        "--blipdiff-eval-mode",
+        type=int,
+        default=0,
+        help="Use which encoder to build target gallery." +
+             " 0 for clip image encoder, 1 for blip diffusion text encoder with null text prompt",
+    )
+    # Haomiao Tang mod end
     parser.add_argument("--no-time-suffix",
         default=True,
         action="store_false",

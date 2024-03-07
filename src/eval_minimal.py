@@ -68,6 +68,24 @@ def fashion_eval(args, root_project):
     evaluate_fashion(model, args, source_dataloader, target_dataloader)
 
 
+def tensor2img(tensor):
+    # Check if input is a PyTorch tensor and has the correct shape
+    if not isinstance(tensor, torch.Tensor) or tensor.dim() != 4 or tensor.shape[1] != 3:
+        raise ValueError("Input must be a PyTorch tensor with shape [bs, 3, 224, 224]")
+
+    # Normalize the tensor values to [0, 255] as PIL Images expect these ranges for RGB images
+    # Assuming the tensor is in the range [0, 1], if it's not, you should adjust the normalization accordingly
+    tensor = tensor.mul(255).byte()
+
+    images = []
+    for img_tensor in tensor:
+        # Convert the tensor to PIL Image
+        img = Image.fromarray(img_tensor.cpu().permute(1, 2, 0).numpy(), 'RGB')
+        images.append(img)
+
+    return images
+
+
 def evaluate_fashion(model, args, source_loader, target_loader):
     all_composed_feat = []
     all_image_features = []
@@ -78,7 +96,17 @@ def evaluate_fashion(model, args, source_loader, target_loader):
         for batch in tqdm(target_loader, desc="Target Features:"):
             target_images, target_paths = batch
             target_images = target_images.cuda(0, non_blocking=True)
-            image_features = model.encode_image(target_images)  # TODO inference alignment
+            target_images_list = tensor2img(target_images)
+            if args.blipdiff_eval_mode == 0:
+                image_features = model.get_batched_unified_embed(
+                    prompt_list=["" for _ in range(len(target_images_list))],
+                    reference_image_list=target_images_list,
+                    source_subject_category=args.source_data,
+                    target_subject_category=args.source_data,
+                )
+            elif args.blipdiff_eval_mode == 1:
+                pass # TODO
+            image_features = torch.cat(image_features, dim=0)
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
             all_image_features.append(image_features)
             for path in target_paths:
@@ -89,7 +117,14 @@ def evaluate_fashion(model, args, source_loader, target_loader):
             ref_images, target_images, target_caption, caption_only, answer_paths, ref_names, captions = batch
             for path in answer_paths:
                 all_answer_paths.append(path)
-            composed_feat = model.forward()  # Tensor: [bs, 768] TODO inference alignment
+            target_images_list = tensor2img(target_images)
+            composed_feat = model.get_batched_unified_embed(
+                prompt_list=captions,
+                reference_image_list=target_images_list,
+                source_subject_category=args.source_data,
+                target_subject_category=args.source_data,
+            )
+            composed_feat = torch.cat(composed_feat, dim=0)  # Tensor: [bs, 768]
             composed_feat = composed_feat / composed_feat.norm(dim=-1, keepdim=True)
             all_composed_feat.append(composed_feat)
     metric_func = partial(get_metrics_fashion,

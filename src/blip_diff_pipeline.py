@@ -29,7 +29,6 @@ from diffusers.pipelines.blip_diffusion.blip_image_processing import BlipImagePr
 from diffusers.pipelines.blip_diffusion.modeling_blip2 import Blip2QFormerModel
 from diffusers.pipelines.blip_diffusion.modeling_ctx_clip import ContextCLIPTextModel
 
-
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 EXAMPLE_DOC_STRING = """
@@ -101,17 +100,17 @@ class BlipDiffusionPipeline(DiffusionPipeline):
     model_cpu_offload_seq = "qformer->text_encoder->unet->vae"
 
     def __init__(
-        self,
-        tokenizer: CLIPTokenizer,
-        text_encoder: ContextCLIPTextModel,
-        vae: AutoencoderKL,
-        unet: UNet2DConditionModel,
-        scheduler: PNDMScheduler,
-        qformer: Blip2QFormerModel,
-        image_processor: BlipImageProcessor,
-        ctx_begin_pos: int = 2,
-        mean: List[float] = None,
-        std: List[float] = None,
+            self,
+            tokenizer: CLIPTokenizer,
+            text_encoder: ContextCLIPTextModel,
+            vae: AutoencoderKL,
+            unet: UNet2DConditionModel,
+            scheduler: PNDMScheduler,
+            qformer: Blip2QFormerModel,
+            image_processor: BlipImageProcessor,
+            ctx_begin_pos: int = 2,
+            mean: List[float] = None,
+            std: List[float] = None,
     ):
         super().__init__()
 
@@ -183,46 +182,39 @@ class BlipDiffusionPipeline(DiffusionPipeline):
 
         return text_embeddings
 
-
     def get_batched_unified_embed(
-        self,
-        prompt: List[str],
-        reference_image_list: PIL.Image.Image,
-        source_subject_category: List[str],
-        target_subject_category: List[str],
-        latents: Optional[torch.FloatTensor] = None,
-        guidance_scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
-        num_inference_steps: int = 50,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        neg_prompt: Optional[str] = "",
-        prompt_strength: float = 1.0,
-        prompt_reps: int = 20,
-        output_type: Optional[str] = "pil",
-        return_dict: bool = True,
+            self,
+            prompt_list: List[str],
+            reference_image_list: List[PIL.Image.Image],
+            **kwargs
     ):
-        pass
-
-
+        all_unified_embedding = []
+        for reference_image, prompt in zip(reference_image_list, prompt_list):
+            emb = self.get_unified_embed(
+                prompt=prompt,
+                reference_image=reference_image,
+                **kwargs
+            )
+            all_unified_embedding.append(emb)
+        return all_unified_embedding
 
     def get_unified_embed(
-        self,
-        prompt: List[str],
-        reference_image: PIL.Image.Image,
-        source_subject_category: List[str],
-        target_subject_category: List[str],
-        latents: Optional[torch.FloatTensor] = None,
-        guidance_scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
-        num_inference_steps: int = 50,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        neg_prompt: Optional[str] = "",
-        prompt_strength: float = 1.0,
-        prompt_reps: int = 20,
-        output_type: Optional[str] = "pil",
-        return_dict: bool = True,
+            self,
+            prompt: List[str],
+            reference_image: PIL.Image.Image,
+            source_subject_category: List[str],
+            target_subject_category: List[str],
+            latents: Optional[torch.FloatTensor] = None,
+            guidance_scale: float = 7.5,
+            height: int = 512,
+            width: int = 512,
+            num_inference_steps: int = 50,
+            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+            neg_prompt: Optional[str] = "",
+            prompt_strength: float = 1.0,
+            prompt_reps: int = 20,
+            output_type: Optional[str] = "pil",
+            return_dict: bool = True,
     ):
         """
         Function invoked when calling the pipeline for generation.
@@ -303,22 +295,22 @@ class BlipDiffusionPipeline(DiffusionPipeline):
     @torch.no_grad()
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
-        self,
-        prompt: List[str],
-        reference_image: PIL.Image.Image,
-        source_subject_category: List[str],
-        target_subject_category: List[str],
-        latents: Optional[torch.FloatTensor] = None,
-        guidance_scale: float = 7.5,
-        height: int = 512,
-        width: int = 512,
-        num_inference_steps: int = 50,
-        generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
-        neg_prompt: Optional[str] = "",
-        prompt_strength: float = 1.0,
-        prompt_reps: int = 20,
-        output_type: Optional[str] = "pil",
-        return_dict: bool = True,
+            self,
+            prompt: List[str],
+            reference_image: PIL.Image.Image,
+            source_subject_category: List[str],
+            target_subject_category: List[str],
+            latents: Optional[torch.FloatTensor] = None,
+            guidance_scale: float = 7.5,
+            height: int = 512,
+            width: int = 512,
+            num_inference_steps: int = 50,
+            generator: Optional[Union[torch.Generator, List[torch.Generator]]] = None,
+            neg_prompt: Optional[str] = "",
+            prompt_strength: float = 1.0,
+            prompt_reps: int = 20,
+            output_type: Optional[str] = "pil",
+            return_dict: bool = True,
     ):
         """
         Function invoked when calling the pipeline for generation.
