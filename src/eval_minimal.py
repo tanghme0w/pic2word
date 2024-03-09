@@ -12,6 +12,7 @@ from params import parse_args
 from src.data import FashionIQ
 from src.eval_utils import evaluate_fashion
 from blip_diff_pipeline import BlipDiffusionPipeline
+from transformers.models.clip import CLIPModel
 
 
 def preprocess(n_px: int, is_train: bool):
@@ -91,6 +92,11 @@ def evaluate_fashion(model, args, source_loader, target_loader):
     all_image_features = []
     all_target_paths = []
     all_answer_paths = []
+    # load CLIP model
+    print("loading CLIP model")
+    clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to("cuda")
+    visual_projection = clip_model.visual_projection
+    text_projection = clip_model.text_projection
     # get all image features
     with torch.no_grad():
         for batch in tqdm(target_loader, desc="Target Features:"):
@@ -104,9 +110,12 @@ def evaluate_fashion(model, args, source_loader, target_loader):
                     source_subject_category=args.source_data,
                     target_subject_category=args.source_data,
                 )
+                image_features = text_projection(torch.cat(image_features, dim=0).to(dtype=torch.float))
             elif args.blipdiff_eval_mode == 1:
-                pass # TODO
-            image_features = torch.cat(image_features, dim=0)
+                image_features = model.get_batched_image_embed(
+                    reference_images=target_images_list
+                )
+                image_features = visual_projection(torch.cat(image_features, dim=0).to(dtype=torch.float))
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
             all_image_features.append(image_features)
             for path in target_paths:
@@ -124,7 +133,7 @@ def evaluate_fashion(model, args, source_loader, target_loader):
                 source_subject_category=args.source_data,
                 target_subject_category=args.source_data,
             )
-            composed_feat = torch.cat(composed_feat, dim=0)  # Tensor: [bs, 768]
+            composed_feat = text_projection(torch.cat(composed_feat, dim=0).to(dtype=torch.float))  # Tensor: [bs, 768]
             composed_feat = composed_feat / composed_feat.norm(dim=-1, keepdim=True)
             all_composed_feat.append(composed_feat)
     metric_func = partial(get_metrics_fashion,

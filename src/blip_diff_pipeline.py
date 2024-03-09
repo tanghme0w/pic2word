@@ -182,6 +182,22 @@ class BlipDiffusionPipeline(DiffusionPipeline):
 
         return text_embeddings
 
+    def get_batched_image_embed(self, reference_images: List[PIL.Image.Image]):
+        all_image_emb = []
+        for ref_img in reference_images:
+            all_image_emb.append(self.get_image_embed(ref_img))
+        return all_image_emb
+
+    def get_image_embed(self, reference_image: PIL.Image.Image):
+        device = self._execution_device
+
+        reference_image = self.image_processor.preprocess(
+            reference_image, image_mean=self.config.mean, image_std=self.config.std, return_tensors="pt"
+        )["pixel_values"]
+        reference_image = reference_image.to(device)
+        return self.qformer.visual_encoder(reference_image).pooler_output
+
+
     def get_batched_unified_embed(
             self,
             prompt_list: List[str],
