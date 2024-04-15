@@ -10,7 +10,6 @@ from tqdm import tqdm
 from eval_utils import get_metrics_fashion
 from params import parse_args
 from src.data import FashionIQ
-from src.eval_utils import evaluate_fashion
 from blip_diff_pipeline import BlipDiffusionPipeline
 from transformers.models.clip import CLIPModel
 
@@ -94,7 +93,7 @@ def evaluate_fashion(model, args, source_loader, target_loader):
     all_answer_paths = []
     # load CLIP model
     print("loading CLIP model")
-    clip_model = CLIPModel.from_pretrained("openai/clip-vit-large-patch14").to("cuda")
+    clip_model = CLIPModel.from_pretrained("/home/me0w/Desktop/CIR/clip-vit-large-patch14").to("cuda")
     visual_projection = clip_model.visual_projection
     text_projection = clip_model.text_projection
     # get all image features
