@@ -268,9 +268,9 @@ class VisualTransformer(nn.Module):
         x = self.ln_post(x[:, 0, :])
 
         if self.proj is not None:
-            x = x @ self.proj
+            x_proj = x @ self.proj
 
-        return x
+        return x, x_proj
 
     def get_tokens(self, x: torch.Tensor):
         x = self.conv1(x)  # shape = [*, width, grid, grid]

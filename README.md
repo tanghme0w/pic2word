@@ -3,6 +3,36 @@
 This is an open source implementation of [Pic2Word](https://arxiv.org/pdf/2302.03084.pdf). This is not an
 officially supported Google product.
 
+## Editing Notes
+This version requires the following file tree
+```text
+.
+├── clip-vit-large-patch14
+├── data
+│   └── fashion-iq
+│        └──...
+├── distilled_sd.pt
+├── fm_sd.pt
+├── pic2word_model.pt
+├── model
+│   ├── clip.py
+│   └── model.py
+├── src
+│   └── ...
+├── third_party
+│   └── ...
+└── valprep.sh
+```
+run eval command
+```bash
+PYTHONPATH=. python src/eval_retrieval.py \
+    --openai-pretrained \
+    --resume pic2word_model.pt \
+    --eval-mode fashion \
+    --source toptee \
+    --gpu 0 \
+    --model ViT-L/14
+```
 
 ## Data
 

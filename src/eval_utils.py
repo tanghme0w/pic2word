@@ -472,7 +472,7 @@ def evaluate_fashion(model, img2text, args, source_loader, target_loader):
             target_images, target_paths = batch
             if args.gpu is not None:
                 target_images = target_images.cuda(args.gpu, non_blocking=True)
-            image_features = m.encode_image(target_images)
+            image_features = m.encode_image(target_images)[1]
             image_features = image_features / image_features.norm(dim=-1, keepdim=True)
             all_image_features.append(image_features)
             for path in target_paths:
@@ -490,31 +490,21 @@ def evaluate_fashion(model, img2text, args, source_loader, target_loader):
                 target_images = target_images.cuda(args.gpu, non_blocking=True)
                 target_caption = target_caption.cuda(args.gpu, non_blocking=True)
                 caption_only = caption_only.cuda(args.gpu, non_blocking=True)
-            image_features = m.encode_image(target_images)
-            query_image_features = m.encode_image(ref_images)
-            id_split = tokenize(["*"])[0][1]            
-            caption_features = m.encode_text(target_caption)                            
+            if (dict(img2text.named_parameters())['layers.0.0.weight'].shape[1] == 768):
+                query_image_features = m.encode_image(ref_images)[1]
+            else:
+                query_image_features = m.encode_image(ref_images)[0]
+            id_split = tokenize(["*"])[0][1]                                 
             query_image_tokens = img2text(query_image_features)          
             composed_feature = m.encode_text_img_retrieval(target_caption, query_image_tokens, split_ind=id_split, repeat=False)
-            image_features = image_features / image_features.norm(dim=-1, keepdim=True)            
-            caption_features = caption_features / caption_features.norm(dim=-1, keepdim=True)                       
-            query_image_features = query_image_features / query_image_features.norm(dim=-1, keepdim=True)   
-            mixture_features = query_image_features + caption_features
-            mixture_features = mixture_features / mixture_features.norm(dim=-1, keepdim=True)
             composed_feature = composed_feature / composed_feature.norm(dim=-1, keepdim=True)
 
-            all_caption_features.append(caption_features)
-            all_query_image_features.append(query_image_features)
-            all_composed_features.append(composed_feature)            
-            all_mixture_features.append(mixture_features)                         
+            all_composed_features.append(composed_feature)                                   
 
         metric_func = partial(get_metrics_fashion, 
                               image_features=torch.cat(all_image_features),
                               target_names=all_target_paths, answer_names=all_answer_paths)
-        feats = {'composed': torch.cat(all_composed_features), 
-                 'image': torch.cat(all_query_image_features),
-                 'text': torch.cat(all_caption_features),
-                 'mixture': torch.cat(all_mixture_features)}
+        feats = {'composed': torch.cat(all_composed_features)}
         
         for key, value in feats.items():
             metrics = metric_func(ref_features=value)

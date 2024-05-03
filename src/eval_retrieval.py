@@ -44,10 +44,10 @@ def load_model(args):
     model, _, preprocess_val = load(
             args.model,
             jit=False)
-    img2text = IM2TEXT(embed_dim=model.embed_dim, 
+    img2text = IM2TEXT(embed_dim=768, 
                        middle_dim=args.middle_dim, 
                        output_dim=model.token_embedding.weight.shape[1],
-                       n_layer=args.n_layer) 
+                       n_layer=args.n_layer)
     # See https://discuss.pytorch.org/t/valueerror-attemting-to-unscale-fp16-gradients/81372
     if args.precision == "amp" or args.precision == "fp32" or args.gpu is None:
         convert_models_to_fp32(model)
@@ -104,12 +104,14 @@ def load_model(args):
         if not args.distributed and next(iter(sd_img2text.items()))[0].startswith('module'):
             sd_img2text = {k[len('module.'):]: v for k, v in sd_img2text.items()}
         model.load_state_dict(sd)
-        img2text.load_state_dict(sd_img2text)
+        # img2text.load_state_dict(sd_img2text)
         logging.info(
             f"=> loaded checkpoint '{args.resume}' (epoch {checkpoint['epoch']})"
         )
     else:
         logging.info("=> no checkpoint found at '{}'".format(args.resume))
+    diff4cir_checkpoint = torch.load("fm_sd.pt")
+    img2text.load_state_dict(diff4cir_checkpoint)
     return model, img2text, preprocess_val
 
 def setup_log_save(args):
@@ -346,10 +348,7 @@ def main():
     args.log_level = logging.DEBUG if args.debug else logging.INFO
     log_queue = setup_primary_logging(args.log_path, args.log_level)
     args.world_size = 1
-    try:
-        main_worker(args.gpu, None, log_queue, args)
-    except:
-        print('evaluation done')
+    main_worker(args.gpu, None, log_queue, args)
 
 
 if __name__ == "__main__":
