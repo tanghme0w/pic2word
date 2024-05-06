@@ -307,6 +307,12 @@ def parse_args():
         type=lambda x: [int(a) for a in x.split(",")],
         help="In DP, which GPUs to use for multigpu training",
     )
+    parser.add_argument(
+        "--skiptarget",
+        default=False,
+        action="store_true",
+        help="skip target feature calculation (for debugging purpose)"
+    )
     args = parser.parse_args()
     args.aggregate = not args.skip_aggregate
 

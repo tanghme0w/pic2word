@@ -467,8 +467,10 @@ def evaluate_fashion(model, img2text, args, source_loader, target_loader):
     logit_scale = m.logit_scale.exp()
     logit_scale = logit_scale.mean() 
 
-    with torch.no_grad():
+    with torch.no_grad():    
         for batch in tqdm(target_loader):
+            if args.skiptarget:
+                break
             target_images, target_paths = batch
             if args.gpu is not None:
                 target_images = target_images.cuda(args.gpu, non_blocking=True)

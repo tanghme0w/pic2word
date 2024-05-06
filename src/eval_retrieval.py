@@ -44,7 +44,7 @@ def load_model(args):
     model, _, preprocess_val = load(
             args.model,
             jit=False)
-    img2text = IM2TEXT(embed_dim=768, 
+    img2text = IM2TEXT(embed_dim=1024, 
                        middle_dim=args.middle_dim, 
                        output_dim=model.token_embedding.weight.shape[1],
                        n_layer=args.n_layer)
@@ -110,6 +110,15 @@ def load_model(args):
         )
     else:
         logging.info("=> no checkpoint found at '{}'".format(args.resume))
+    # load diff4cir models
+    from transformers import CLIPModel
+    from custom_clip import encode_image, encode_text_img_retrieval
+    from types import MethodType
+    model = CLIPModel.from_pretrained("clip-vit-large-patch14")
+    model.encode_image = MethodType(encode_image, model)
+    model.encode_text_img_retrieval = MethodType(encode_text_img_retrieval, model)
+    if args.gpu is not None:
+        model.cuda(args.gpu)
     diff4cir_checkpoint = torch.load("fm_sd.pt")
     img2text.load_state_dict(diff4cir_checkpoint)
     return model, img2text, preprocess_val
